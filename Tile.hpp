@@ -27,11 +27,9 @@ public:
     }
 
     int value() const {
-        if (fixed())
-            for (int i=0; i<candidateN; ++i)
-                if (candidates[i])
-                    return i;
-        return -1;
+        std::vector<int> v;
+        append_candidates(v);
+        return v.size() == 1 ? v.front() : -1;
     }
 
     bool fixable(int v) const {
