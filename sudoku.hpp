@@ -153,7 +153,7 @@ template <int BaseN>
 std::ostream &operator<<(std::ostream &os, const Sudoku<BaseN> &sudoku) {
     static const int groupN = Sudoku<BaseN>::GroupN;
     static const int field_width
-    = std::max(2, static_cast<int>(ceil(log10(groupN))));
+    = std::max(2, 1+static_cast<int>(ceil(log10(groupN))));
 
     for (int r=0; r<groupN; ++r) {
         for (int c=0; c<groupN; ++c)
