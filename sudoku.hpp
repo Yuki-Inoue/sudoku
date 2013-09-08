@@ -139,7 +139,7 @@ bool solve(Sudoku<BaseN> &sudoku) {
             for (int candidate : v) {
                 Sudoku<BaseN> candidate_sudoku = sudoku;
                 if(candidate_sudoku.fix(r,c,candidate) && solve(candidate_sudoku)){
-                    sudoku = candidate_sudoku;
+                    sudoku = std::move(candidate_sudoku);
                     return true;
                 }
             }
