@@ -118,16 +118,8 @@ public:
                         fix_candidate.reset(new std::pair<int,int>(cord));
                 }
 
-            bool result = true;
-            if (fix_candidate) {
-                if (fix_flag)
-                    result = fix(fix_candidate->first, fix_candidate->second, value);
-            }
-            else {
-                result = false;
-            }
-
-            if (!result)
+            if (!fix_candidate ||
+                (fix_flag && !fix(fix_candidate->first, fix_candidate->second, value)))
                 return false;
         }
 
