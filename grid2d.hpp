@@ -16,6 +16,12 @@
 template <class Value>
 class Grid2D {
 
+public:
+    typedef typename std::vector<Value>::iterator iterator;
+    typedef typename std::vector<Value>::const_iterator const_iterator;
+
+private:
+
     int height, width;
     std::vector<Value> content;
 
@@ -41,6 +47,23 @@ public:
 
     Value &get(int row, int col) {
         return content[index(row,col)];
+    }
+
+
+    iterator begin() {
+        return content.begin();
+    }
+
+    iterator end() {
+        return content.end();
+    }
+
+    const_iterator begin() const {
+        return content.begin();
+    }
+
+    const_iterator end() const {
+        return content.end();
     }
 };
 

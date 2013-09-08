@@ -19,6 +19,10 @@ class Tile {
 public:
 
     Tile() {
+        reset();
+    }
+
+    void reset() {
         candidates.set();
     }
 

@@ -14,9 +14,9 @@
 int main(int argc, const char * argv[])
 {
     Sudoku99 sudoku;
+    std::cin >> sudoku;
+
     solve(sudoku);
-
-
     std::cout << sudoku;
 
 

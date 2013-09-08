@@ -60,6 +60,11 @@ public:
         return field.get(row,col).value();
     }
 
+    void reset() {
+        for (Tile<GroupN> &tile : field)
+            tile.reset();
+    }
+
 
     void append_candidates(int row, int col, std::vector<int> &v) const {
         field.get(row,col).append_candidates(v);
@@ -166,6 +171,23 @@ std::ostream &operator<<(std::ostream &os, const Sudoku<BaseN> &sudoku) {
     return os;
 }
 
+
+template <int BaseN>
+std::istream &operator>>(std::istream &is, Sudoku<BaseN> &sudoku) {
+    sudoku.reset();
+    const int groupN = Sudoku<BaseN>::GroupN;
+
+    for (int r=0; r<groupN; ++r) {
+        for (int c=0; c<groupN; ++c) {
+            int v;
+            is >> v;
+            if (v >= 0)
+                sudoku.fix(r,c,v);
+        }
+    }
+
+    return is;
+}
 
 
 
