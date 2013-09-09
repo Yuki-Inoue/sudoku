@@ -25,7 +25,10 @@ public:
     static const int GroupN = BaseN * BaseN;
 
 private:
-    Grid2D<Tile<GroupN> > field;
+
+
+    typedef Tile<GroupN> tile_type;
+    Grid2D<tile_type> field;
 
 
     static void append_other_row_cordinates(int row, int col, std::vector<std::pair<int,int> > &group) {
@@ -52,33 +55,7 @@ private:
             }
     }
 
-public:
-
-    Sudoku() : field(GroupN, GroupN) {}
-
-
-    int get(int row, int col) const {
-        return field.get(row,col).value();
-    }
-
-    void reset() {
-        for (Tile<GroupN> &tile : field)
-            tile.reset();
-    }
-
-
-    void append_candidates(int row, int col, std::vector<int> &v) const {
-        field.get(row,col).append_candidates(v);
-    }
-
-
-    bool fix(int row, int col, int value) {
-        if (!field.get(row,col).fixable(value))
-            return false;
-        if (field.get(row,col).fixed())
-            return true;
-        field.get(row,col).fix(value);
-
+    bool on_fix_check(int row, int col, int value) {
         std::vector<std::pair<int, int> > groups[3];
         append_other_row_cordinates(row, col, groups[0]);
         append_other_col_cordinates(row, col, groups[1]);
@@ -92,13 +69,7 @@ public:
         return true;
     }
 
-    bool reduce(int row, int col, int value){
-        if (!field.get(row,col).reducible(value))
-            return false;
-        if (!field.get(row,col).fixable(value))
-            return true;
-
-        field.get(row,col).reduce(value);
+    bool on_reduce_check(int row, int col, int value) {
 
         std::vector<std::pair<int,int> > groups[3];
         append_other_row_cordinates(row, col, groups[0]);
@@ -125,6 +96,70 @@ public:
 
         return true;
     }
+
+public:
+
+    Sudoku() : field(GroupN, GroupN) {}
+
+
+    int get(int row, int col) const {
+        return field.get(row,col).value();
+    }
+
+    void reset() {
+        for (tile_type &tile : field)
+            tile.reset();
+    }
+
+
+    void append_candidates(int row, int col, std::vector<int> &v) const {
+        field.get(row,col).append_candidates(v);
+    }
+
+
+    bool fix(int row, int col, int value) {
+        tile_type &tile = field.get(row,col);
+
+        if (!tile.fixable(value))
+            return false;
+        if (tile.fixed())
+            return true;
+
+        /*
+        std::cout << "(" << row << "," << col << ") to " << value << std::endl;
+        std::cout << *this << std::endl;
+         */
+
+
+        std::vector<int> candidates;
+        tile.append_candidates(candidates);
+
+        field.get(row,col).fix(value);
+
+        for (int reduce_candidate : candidates)
+            if (reduce_candidate != value &&
+                !on_reduce_check(row, col, reduce_candidate))
+                return false;
+
+
+        return on_fix_check(row, col, value);
+    }
+
+    bool reduce(int row, int col, int value){
+        tile_type &tile = field.get(row,col);
+        if (!tile.reducible(value))
+            return false;
+        if (!tile.fixable(value))
+            return true;
+
+        tile.reduce(value);
+        int v = tile.value();
+
+        return on_reduce_check(row, col, value)
+        && (v < 0 || on_fix_check(row, col, v));
+    }
+
+
 };
 
 
@@ -153,7 +188,7 @@ template <int BaseN>
 std::ostream &operator<<(std::ostream &os, const Sudoku<BaseN> &sudoku) {
     static const int groupN = Sudoku<BaseN>::GroupN;
     static const int field_width
-    = std::max(2, 1+static_cast<int>(ceil(log10(groupN))));
+    = 1+static_cast<int>(ceil(log10(groupN)));
 
     for (int r=0; r<groupN; ++r) {
         for (int c=0; c<groupN; ++c)
