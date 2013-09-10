@@ -15,8 +15,10 @@ int main(int argc, const char * argv[])
     Sudoku99 sudoku;
     std::cin >> sudoku;
 
-    solve(sudoku);
-    std::cout << sudoku;
+    if(solve(sudoku))
+        std::cout << "could not solve" << std::endl;
+    else
+        std::cout << sudoku << std::endl;
 
 
     return 0;
