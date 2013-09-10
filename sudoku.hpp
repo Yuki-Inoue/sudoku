@@ -142,7 +142,8 @@ public:
                 return false;
 
 
-        return on_fix_check(row, col, value);
+        return field.get(row,col).fixable(value)
+        && on_fix_check(row, col, value);
     }
 
     bool reduce(int row, int col, int value){
