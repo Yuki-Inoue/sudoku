@@ -11,65 +11,107 @@
 
 #include <vector>
 #include "grid2d.hpp"
-#include "Tile.hpp"
 
 #include <memory>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 #include <algorithm>
+#include <exception>
 
-template <int BaseN>
-class Sudoku {
+
+
+/*
+ what to return on unfixed tile
+ when made to convert into int
+ */
+static const int UnfixedTile = -2;
+
+
+
+
+
+
+template <typename Unsigned>
+class BitSizeCalculator {
 public:
-    static const int GroupN = BaseN * BaseN;
+    static size_t bitsize() {
+        return sizeof(Unsigned) * 8;
+    }
+};
 
+template <typename Unsigned>
+bool tile_fixed(const Unsigned &u) {
+    return !(u^(u&-u));
+}
+
+
+// default sudoku supports baseN up to 5.
+// use unsigned long long for up to 8.
+// implement multibyte unsigned integer for more.
+//
+template <typename Unsigned = unsigned long>
+class Sudoku {
 private:
 
+    int baseN;
+    Grid2D<Unsigned> field;
 
-    typedef Tile<GroupN> tile_type;
-    Grid2D<tile_type> field;
+    std::vector<Unsigned> bitvalue_table;
 
 
-    static void append_other_row_cordinates(int row, int col, std::vector<std::pair<int,int> > &group) {
-        for (int c = 0; c<GroupN; c++) {
+
+
+
+
+
+    void append_other_row_cordinates(int row, int col, std::vector<std::pair<int,int> > &group) {
+        for (int c = 0; c<getGroupN(); c++) {
             if (c == col) continue;
             group.push_back(std::make_pair(row,c));
         }
     }
 
-    static void append_other_col_cordinates(int row, int col, std::vector<std::pair<int, int> > &group) {
-        for (int r = 0; r<GroupN; ++r) {
+    void append_other_col_cordinates(int row, int col, std::vector<std::pair<int, int> > &group) {
+        for (int r = 0; r<getGroupN(); ++r) {
             if (r == row) continue;
             group.push_back(std::make_pair(r, col));
         }
     }
 
-    static void append_other_local_cordinates(int row, int col, std::vector<std::pair<int, int> > &group) {
-        const int rowbase = row/BaseN * BaseN;
-        const int colbase = col/BaseN * BaseN;
-        for (int r=rowbase; r< rowbase + BaseN; ++r)
-            for (int c=colbase; c< colbase + BaseN; ++c) {
+    void append_other_local_cordinates(int row, int col, std::vector<std::pair<int, int> > &group) {
+        const int rowbase = row/baseN * baseN;
+        const int colbase = col/baseN * baseN;
+        for (int r=rowbase; r< rowbase + baseN; ++r)
+            for (int c=colbase; c< colbase + baseN; ++c) {
                 if (r==row && c == col) continue;
                 group.push_back(std::make_pair(r,c));
             }
     }
 
-    bool on_fix_check(int row, int col, int value) {
+    bool check_reduces_from_fix(int row, int col, Unsigned bitvalue) {
         std::vector<std::pair<int, int> > groups[3];
         append_other_row_cordinates(row, col, groups[0]);
         append_other_col_cordinates(row, col, groups[1]);
         append_other_local_cordinates(row, col, groups[2]);
 
         for (const auto &group : groups)
-            for (const auto &cord : group)
-                if (!reduce(cord.first, cord.second, value))
+            for (const auto &cord : group) {
+                Unsigned &tile = field[cord];
+                if (!(tile ^ bitvalue))
                     return false;
+                if (!(tile & bitvalue))
+                    continue;
+                tile ^= bitvalue;
+                if (tile_fixed(tile) &&
+                    !check_reduces_from_fix(cord.first, cord.second, tile))
+                    return false;
+            }
 
         return true;
     }
 
-    bool on_reduce_check(int row, int col, int value) {
+    bool check_fixable_by_reduction(int row, int col, Unsigned bitvalue) {
 
         std::vector<std::pair<int,int> > groups[3];
         append_other_row_cordinates(row, col, groups[0]);
@@ -80,7 +122,7 @@ private:
             std::unique_ptr<std::pair<int,int> > fix_candidate;
             bool fix_flag = true;
             for (const auto &cord : group)
-                if (field.get(cord.first, cord.second).fixable(value)) {
+                if (field[cord] & bitvalue) {
                     if (fix_candidate) {
                         fix_flag = false;
                         break;
@@ -90,104 +132,123 @@ private:
                 }
 
             if (!fix_candidate ||
-                (fix_flag && !fix(fix_candidate->first, fix_candidate->second, value)))
+                (fix_flag && !fix_by_bitvalue(fix_candidate->first, fix_candidate->second, bitvalue)))
                 return false;
         }
 
         return true;
     }
 
-public:
+    bool reduce(int row, int col, Unsigned bitvalue){
+        Unsigned &tile = field.get(row,col);
+        if (tile & bitvalue) {
+            if (!(tile ^ bitvalue))
+                return false;
+        }
+        else
+            return true;
 
-    Sudoku() : field(GroupN, GroupN) {}
+        tile ^= bitvalue;
 
-
-    int get(int row, int col) const {
-        return field.get(row,col).value();
-    }
-
-    void reset() {
-        for (tile_type &tile : field)
-            tile.reset();
-    }
-
-
-    void append_candidates(int row, int col, std::vector<int> &v) const {
-        field.get(row,col).append_candidates(v);
+        return (!tile_fixed(tile) || check_reduces_from_fix(row, col, bitvalue))
+        && check_fixable_by_reduction(row, col, bitvalue);
     }
 
 
-    bool fix(int row, int col, int value) {
-        tile_type &tile = field.get(row,col);
-
-        if (!tile.fixable(value))
+    bool fix_by_bitvalue(int row, int col, Unsigned bitvalue) {
+        Unsigned &tile = field.get(row,col);
+        if (!(tile & bitvalue))
             return false;
-        if (tile.fixed())
+        if (!(tile ^ bitvalue))
             return true;
 
         /*
-        std::cout << "(" << row << "," << col << ") to " << value << std::endl;
+        std::cout << "(" << row << "," << col <<") to " << value_of_tilevalue(bitvalue) << std::endl;
         std::cout << *this << std::endl;
          */
 
-
-        std::vector<int> candidates;
-        tile.append_candidates(candidates);
-
-        field.get(row,col).fix(value);
-
-        for (int reduce_candidate : candidates)
-            if (reduce_candidate != value &&
-                !on_reduce_check(row, col, reduce_candidate))
+        while (tile ^ bitvalue) {
+            const Unsigned others = tile ^ bitvalue;
+            const Unsigned other = others & -others;
+            tile ^= other;
+            if(!check_fixable_by_reduction(row, col, other))
                 return false;
+        }
 
-
-        return on_fix_check(row, col, value);
+        return check_reduces_from_fix(row, col, bitvalue);
     }
 
-    bool reduce(int row, int col, int value){
-        tile_type &tile = field.get(row,col);
-        if (!tile.reducible(value))
-            return false;
-        if (!tile.fixable(value))
-            return true;
-
-        tile.reduce(value);
-        int v = tile.value();
-
-        return on_reduce_check(row, col, value)
-        && (v < 0 || on_fix_check(row, col, v));
+    Unsigned fullbits() const {
+        return ~static_cast<Unsigned>(0) >> BitSizeCalculator<Unsigned>::bitsize() - getGroupN();
     }
 
 
+    int value_of_tilevalue(const Unsigned &u) const {
+        return
+        !tile_fixed(u) ? UnfixedTile :
+        (int)
+        (find(bitvalue_table.begin(), bitvalue_table.end(), u)
+         - bitvalue_table.begin());
+    }
+
+
+public:
+
+    explicit Sudoku(int baseN_) : baseN(baseN_), field(getGroupN(),getGroupN(), fullbits())
+    , bitvalue_table(getGroupN()){
+
+        if (BitSizeCalculator<Unsigned>::bitsize() < getGroupN())
+            throw std::invalid_argument("sudoku baseN too big");
+
+        for (int i=0; i<getGroupN(); ++i)
+            bitvalue_table[i] = (Unsigned) 1 << i;
+    }
+
+
+    int getGroupN() const { return baseN * baseN ; }
+
+
+    int get(int row, int col) const {
+        return value_of_tilevalue(field.get(row,col));
+    }
+
+    void reset() {
+        for (Unsigned &tile : field)
+            tile = fullbits();
+    }
+
+    bool fix(int row, int col, int value) {
+        return fix_by_bitvalue(row, col, (Unsigned) 1 << value);
+    }
+
+
+    bool solve() {
+        for (int r=0; r<getGroupN(); ++r)
+            for (int c=0; c<getGroupN(); ++c) {
+                Unsigned &tile = field.get(r,c);
+                while (!tile_fixed(tile)) {
+                    Sudoku candidate_sudoku = *this;
+                    Unsigned candidate_bitvalue = tile & -tile;
+                    if (candidate_sudoku.fix_by_bitvalue(r,c, candidate_bitvalue)
+                        && candidate_sudoku.solve()) {
+                        *this = candidate_sudoku;
+                        return true;
+                    }
+                    if(!reduce(r, c, candidate_bitvalue))
+                        return false;
+                }
+            }
+        return true;
+    }
 };
 
 
-template <int BaseN>
-bool solve(Sudoku<BaseN> &sudoku) {
-    for (int r=0; r<Sudoku<BaseN>::GroupN; ++r)
-        for (int c=0; c<Sudoku<BaseN>::GroupN; ++c) {
-            std::vector<int> v;
-            sudoku.append_candidates(r,c,v);
-            if (v.size() == 1)
-                continue;
-            for (int candidate : v) {
-                Sudoku<BaseN> candidate_sudoku = sudoku;
-                if(candidate_sudoku.fix(r,c,candidate) && solve(candidate_sudoku)){
-                    sudoku = std::move(candidate_sudoku);
-                    return true;
-                }
-            }
-            return false;
-        }
-    return true;
-}
 
 
-template <int BaseN>
-std::ostream &operator<<(std::ostream &os, const Sudoku<BaseN> &sudoku) {
-    static const int groupN = Sudoku<BaseN>::GroupN;
-    static const int field_width
+template <typename Unsigned>
+std::ostream &operator<<(std::ostream &os, const Sudoku<Unsigned> &sudoku) {
+    const int groupN = sudoku.getGroupN();
+    const int field_width
     = 1+static_cast<int>(ceil(log10(groupN)));
 
     for (int r=0; r<groupN; ++r) {
@@ -200,10 +261,10 @@ std::ostream &operator<<(std::ostream &os, const Sudoku<BaseN> &sudoku) {
 }
 
 
-template <int BaseN>
-std::istream &operator>>(std::istream &is, Sudoku<BaseN> &sudoku) {
+template <typename Unsigned>
+std::istream &operator>>(std::istream &is, Sudoku<Unsigned> &sudoku) {
     sudoku.reset();
-    const int groupN = Sudoku<BaseN>::GroupN;
+    const int groupN = sudoku.getGroupN();
 
     for (int r=0; r<groupN; ++r) {
         for (int c=0; c<groupN; ++c) {
@@ -219,7 +280,7 @@ std::istream &operator>>(std::istream &is, Sudoku<BaseN> &sudoku) {
 
 
 
-typedef Sudoku<3> Sudoku99;
+typedef Sudoku<unsigned long> sudoku_ul;
 
 
 #endif

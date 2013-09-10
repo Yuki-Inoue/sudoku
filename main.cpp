@@ -12,10 +12,10 @@
 
 int main(int argc, const char * argv[])
 {
-    Sudoku99 sudoku;
-    std::cin >> sudoku;
+    Sudoku<unsigned long> sudoku(3);
+    // std::cin >> sudoku;
 
-    if(solve(sudoku))
+    if(!sudoku.solve())
         std::cout << "could not solve" << std::endl;
     else
         std::cout << sudoku << std::endl;
