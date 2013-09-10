@@ -141,12 +141,10 @@ private:
 
     bool reduce(int row, int col, Unsigned bitvalue){
         Unsigned &tile = field.get(row,col);
-        if (tile & bitvalue) {
-            if (!(tile ^ bitvalue))
-                return false;
-        }
-        else
+        if (!(tile & bitvalue))
             return true;
+        if (!(tile ^ bitvalue))
+            return false;
 
         tile ^= bitvalue;
 
@@ -159,7 +157,10 @@ private:
         Unsigned &tile = field.get(row,col);
         if (!(tile & bitvalue))
             return false;
-        if (!(tile ^ bitvalue))
+
+
+        Unsigned others = tile ^ bitvalue;
+        if (!others)
             return true;
 
         /*
@@ -167,15 +168,22 @@ private:
         std::cout << *this << std::endl;
          */
 
-        while (tile ^ bitvalue) {
-            const Unsigned others = tile ^ bitvalue;
+
+
+        do {
+            // we do not use ^ because
+            // although we are not sure,
+            // the bitvalue in tile could be reduced
+
             const Unsigned other = others & -others;
-            tile ^= other;
+            tile &= ~other;
             if(!check_fixable_by_reduction(row, col, other))
                 return false;
+            others = tile & ~bitvalue;
         }
+        while (others);
 
-        return check_reduces_from_fix(row, col, bitvalue);
+        return tile && check_reduces_from_fix(row, col, bitvalue);
     }
 
     Unsigned fullbits() const {
