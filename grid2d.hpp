@@ -30,15 +30,9 @@ private:
     }
 
 public:
-    Grid2D(int height_, int width_)
-    : height(height_), width(width_), content(height_ * width_)
+    Grid2D(int height_, int width_, const Value &v = Value())
+    : height(height_), width(width_), content(height_ * width_, v)
     {}
-
-
-    template <class Ref>
-    void set(int row, int col, Ref &&ref){
-        content[index(row,col)] = std::forward<Ref>(ref);
-    }
 
 
     const Value &get(int row, int col) const {
@@ -47,6 +41,14 @@ public:
 
     Value &get(int row, int col) {
         return content[index(row,col)];
+    }
+
+    Value &operator[](const std::pair<int,int> &p) {
+        return get(p.first, p.second);
+    }
+
+    const Value &operator[](const std::pair<int,int> &p) const {
+        return get(p.first, p.second);
     }
 
 
