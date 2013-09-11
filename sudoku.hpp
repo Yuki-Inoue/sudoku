@@ -18,6 +18,7 @@
 #include <cmath>
 #include <algorithm>
 #include <exception>
+#include <climits>
 
 
 
@@ -36,7 +37,7 @@ template <typename Unsigned>
 class BitSizeCalculator {
 public:
     static size_t bitsize() {
-        return sizeof(Unsigned) * 8;
+        return sizeof(Unsigned) * CHAR_BIT;
     }
 };
 
