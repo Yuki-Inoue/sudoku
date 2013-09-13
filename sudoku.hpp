@@ -43,7 +43,7 @@ public:
 
 template <typename Unsigned>
 bool tile_fixed(const Unsigned &u) {
-    return !(u^(u&-u));
+    return !(u&u-1);
 }
 
 
