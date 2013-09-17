@@ -239,7 +239,7 @@ public:
                     Unsigned candidate_bitvalue = tile & -tile;
                     if (candidate_sudoku.fix_by_bitvalue(r,c, candidate_bitvalue)
                         && candidate_sudoku.solve()) {
-                        *this = candidate_sudoku;
+                        *this = std::move(candidate_sudoku);
                         return true;
                     }
                     if(!reduce(r, c, candidate_bitvalue))
