@@ -12,7 +12,7 @@
 
 int main(int argc, const char * argv[])
 {
-    Sudoku<unsigned long> sudoku(3);
+    Sudoku<> sudoku(3);
     // std::cin >> sudoku;
 
     if(!sudoku.solve())

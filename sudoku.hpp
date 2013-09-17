@@ -36,9 +36,8 @@ static const int UnfixedTile = -2;
 template <typename Unsigned>
 class BitSizeCalculator {
 public:
-    static size_t bitsize() {
-        return sizeof(Unsigned) * CHAR_BIT;
-    }
+    static const size_t bitsize =
+        sizeof(Unsigned) * CHAR_BIT;
 };
 
 template <typename Unsigned>
@@ -188,7 +187,7 @@ private:
     }
 
     Unsigned fullbits() const {
-        return ~static_cast<Unsigned>(0) >> BitSizeCalculator<Unsigned>::bitsize() - getGroupN();
+        return ~static_cast<Unsigned>(0) >> BitSizeCalculator<Unsigned>::bitsize - getGroupN();
     }
 
 
@@ -206,7 +205,7 @@ public:
     explicit Sudoku(int baseN_) : baseN(baseN_), field(getGroupN(),getGroupN(), fullbits())
     , bitvalue_table(getGroupN()){
 
-        if (BitSizeCalculator<Unsigned>::bitsize() < getGroupN())
+        if (BitSizeCalculator<Unsigned>::bitsize < getGroupN())
             throw std::invalid_argument("sudoku baseN too big");
 
         for (int i=0; i<getGroupN(); ++i)
@@ -286,10 +285,6 @@ std::istream &operator>>(std::istream &is, Sudoku<Unsigned> &sudoku) {
 
     return is;
 }
-
-
-
-typedef Sudoku<unsigned long> sudoku_ul;
 
 
 #endif
