@@ -205,7 +205,7 @@ public:
     explicit Sudoku(int baseN_) : baseN(baseN_), field(getGroupN(),getGroupN(), fullbits())
     , bitvalue_table(getGroupN()){
 
-        if (BitSizeCalculator<Unsigned>::bitsize < getGroupN())
+        if ((int) BitSizeCalculator<Unsigned>::bitsize < getGroupN())
             throw std::invalid_argument("sudoku baseN too big");
 
         for (int i=0; i<getGroupN(); ++i)
